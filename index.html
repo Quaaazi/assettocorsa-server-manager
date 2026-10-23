@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <!-- Скрипты только из файлов приложения; картинки — локальные превью и баннеры описания по https -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' file: data: https: http:; connect-src 'self'; object-src 'none'; base-uri 'none'">
+    <title>Assetto Corsa: Server Manager</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Верхняя рамка окна -->
+    <div class="titlebar">
+        <div class="titlebar-drag">
+            <img src="icon.ico" class="app-brand-logo" alt="Logo">
+            <span class="app-title">Assetto Corsa <span class="title-thin">Server Manager</span></span>
+            <span id="title-active-profile" class="title-profile-badge">По умолчанию</span>
+        </div>
+        <div class="window-controls">
+            <button id="win-min" title="Свернуть">
+                <svg width="10" height="10" viewBox="0 0 12 12"><rect fill="currentColor" width="10" height="1" x="1" y="6"></rect></svg>
+            </button>
+            <button id="win-max" title="Развернуть">
+                <svg width="10" height="10" viewBox="0 0 12 12"><rect width="9" height="9" x="1.5" y="1.5" fill="none" stroke="currentColor" stroke-width="1.2"></rect></svg>
+            </button>
+            <button id="win-close" class="close-btn" title="Закрыть">
+                <svg width="10" height="10" viewBox="0 0 12 12"><path d="M1 1L11 11M11 1L1 11" stroke="currentColor" stroke-width="1.4"></path></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Всплывающая карточка с фото машины при наведении мыши -->
+    <div id="car-hover-tooltip" class="car-hover-tooltip hidden">
+        <div class="car-tooltip-img-wrap">
+            <img id="car-tooltip-img" src="" alt="Car Preview">
+            <div class="car-tooltip-shine"></div>
+            <img id="car-tooltip-badge" class="car-tooltip-badge" src="" alt="Badge">
+            <span id="car-tooltip-tag" class="car-tooltip-tag">STREET</span>
+        </div>
+        <div class="car-tooltip-info">
+            <div id="car-tooltip-name" class="car-tooltip-name">Car Name</div>
+            <div class="car-tooltip-meta">
+                <span id="car-tooltip-id" class="mono">car_id</span>
+                <span id="car-tooltip-skins" class="car-tooltip-skins">Скинов: 0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Уведомления -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Полоса скачивания -->
+    <div id="download-bar" class="download-bar hidden">
+        <div class="download-info">
+            <span id="download-text">Скачивание файлов сервера...</span>
+            <span id="download-percent" class="mono">0%</span>
+        </div>
+        <div class="progress-track">
+            <div id="download-fill" class="progress-fill"></div>
+        </div>
+    </div>
+
+    <!-- Модалка автопоиска -->
+    <div id="setup-overlay" class="modal-overlay hidden">
+        <div class="modal-box">
+            <div class="modal-header-tag">УСТАНОВКА</div>
+            <h2>Папка Assetto Corsa не найдена</h2>
+            <p>Укажите корневую папку с установленной игрой вручную.</p>
+            
+            <div class="path-selector">
+                <input type="text" id="setup-ac-path" class="mono" placeholder="C:\Program Files (x86)\Steam\steamapps\common\assettocorsa" readonly>
+                <button id="setup-browse-btn" class="btn secondary">Обзор...</button>
+            </div>
+            
+            <div id="setup-status" class="setup-status mono">Ожидание выбора папки...</div>
+            <button id="setup-install-btn" class="btn primary full-width" disabled>Продолжить</button>
+        </div>
+    </div>
+
+    <!-- Модальное окно добавления картинки / баннера в описание CM -->
+    <div id="media-modal" class="modal-overlay hidden">
+        <div class="modal-box">
+            <div class="modal-header-tag">CONTENT MANAGER // ОФОРМЛЕНИЕ</div>
+            <h2 id="media-modal-title">Добавить баннер</h2>
+            <p>Вставьте прямую ссылку на изображение (в формате <code>.png</code>, <code>.jpg</code> или <code>.gif</code>).</p>
+            
+            <div class="form-group">
+                <label>Прямая ссылка на картинку (URL)</label>
+                <input type="text" id="media-img-url" placeholder="https://i.imgur.com/example.png">
+            </div>
+            <div class="form-group" id="media-link-group">
+                <label>Ссылка при клике на картинку (например, на Discord)</label>
+                <input type="text" id="media-target-url" placeholder="https://discord.gg/invite">
+            </div>
+
+            <div class="modal-actions">
+                <button id="media-cancel-btn" class="btn secondary">Отмена</button>
+                <button id="media-insert-btn" class="btn primary">Вставить в описание</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модалка сохранения профиля -->
+    <div id="profile-modal" class="modal-overlay hidden">
+        <div class="modal-box">
+            <div class="modal-header-tag">СОХРАНЕНИЕ СБОРКИ</div>
+            <h2>Сохранить профиль</h2>
+            <p>Сохраните текущие настройки карты, машин и параметров в отдельный пресет.</p>
+            
+            <div class="form-group">
+                <label>Название профиля</label>
+                <input type="text" id="prof-name-input" placeholder="Шуто Трафик">
+            </div>
+            <div class="form-group">
+                <label>Автор</label>
+                <input type="text" id="prof-author-input" placeholder="Ваше имя">
+            </div>
+            <div class="form-group">
+                <label>Описание</label>
+                <textarea id="prof-desc-input" rows="3" placeholder="Плотный трафик, ограничение 80 км/ч..."></textarea>
+            </div>
+
+            <div class="modal-actions">
+                <button id="prof-cancel-btn" class="btn secondary">Отмена</button>
+                <button id="prof-confirm-save-btn" class="btn primary">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Универсальное подтверждение действия -->
+    <div id="confirm-modal" class="modal-overlay hidden">
+        <div class="modal-box">
+            <div class="modal-header-tag" data-i18n="confirm.tag">ПОДТВЕРЖДЕНИЕ</div>
+            <h2 id="confirm-title"></h2>
+            <p id="confirm-text"></p>
+            <div class="modal-actions">
+                <button id="confirm-cancel-btn" class="btn secondary">Отмена</button>
+                <button id="confirm-ok-btn" class="btn primary" data-i18n="confirm.ok">Продолжить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Диагностика перед запуском -->
+    <div id="diag-modal" class="modal-overlay hidden">
+        <div class="modal-box diag-modal-box">
+            <div class="modal-header-tag" data-i18n="diag.tag">ДИАГНОСТИКА</div>
+            <h2 id="diag-title" data-i18n="diag.title">Проверка перед запуском</h2>
+            <div id="diag-list" class="diag-list"></div>
+            <div class="modal-actions">
+                <button id="diag-close-btn" class="btn secondary" data-i18n="diag.close">Закрыть</button>
+                <button id="diag-recheck-btn" class="btn secondary" data-i18n="diag.recheck">Проверить снова</button>
+                <button id="diag-start-anyway-btn" class="btn danger hidden" data-i18n="diag.startAnyway">Всё равно запустить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- История игроков -->
+    <div id="history-modal" class="modal-overlay hidden">
+        <div class="modal-box history-modal-box">
+            <div class="modal-header-tag" data-i18n="history.tag">LIVE // ИСТОРИЯ</div>
+            <h2 data-i18n="history.title">История игроков</h2>
+            <div class="filter-pills history-tabs">
+                <button class="pill active" data-history-view="players" data-i18n="history.players">Игроки</button>
+                <button class="pill" data-history-view="sessions" data-i18n="history.sessions">Сессии</button>
+            </div>
+            <div id="history-table" class="history-table"></div>
+            <div class="modal-actions">
+                <button id="history-clear-btn" class="btn danger" data-i18n="history.clear">Очистить историю</button>
+                <button id="history-close-btn" class="btn secondary" data-i18n="diag.close">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно выбора карты -->
+    <div id="track-modal" class="modal-overlay hidden">
+        <div class="modal-box track-modal-box">
+            <div class="track-modal-header">
+                <div>
+                    <div class="modal-header-tag">ASSETTO CORSA // ТРАССЫ</div>
+                    <h2 style="margin-bottom: 0;">Выбор карты</h2>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button id="modal-rescan-btn" class="btn-small accent">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                        Обновить
+                    </button>
+                    <button id="close-track-modal-btn" class="btn-small">Закрыть</button>
+                </div>
+            </div>
+            
+            <div class="track-search-wrapper">
+                <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="track-modal-search" placeholder="Поиск карты по названию или ID..." class="search-input mono" style="padding-left: 36px; font-size: 13px;">
+            </div>
+
+            <div id="track-cards-grid" class="track-cards-grid">
+                <!-- Сюда JS будет генерировать карточки -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Навигация -->
+    <header class="top-nav">
+        <nav class="tabs">
+            <button class="tab active" data-tab="tab-dashboard">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                <span>Главная</span>
+            </button>
+            <button class="tab" data-tab="tab-content">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 16H9m10 0h3v-3.15a1 1 0 00-.84-.99L16 11l-2.7-3.6a1 1 0 00-.8-.4H5.24a2 2 0 00-1.8 1.1l-.8 1.63A6 6 0 002 12.42V16h2"/><circle cx="6.5" cy="16.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></svg>
+                <span>Машины и карта</span>
+            </button>
+            <button class="tab" data-tab="tab-profiles">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                <span>Профили</span>
+            </button>
+            <button class="tab" data-tab="tab-rules">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+                <span>Настройки сервера</span>
+            </button>
+            <button class="tab" data-tab="tab-weather">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/></svg>
+                <span>Погода</span>
+            </button>
+            <!-- Вкладка автоматически скрывается, если карта не поддерживает ИИ-трафик -->
+            <button id="nav-tab-ai" class="tab" data-tab="tab-ai">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                <span>Трафик</span>
+            </button>
+            <!-- Вкладка Репозиторий плагинов -->
+            <button class="tab" data-tab="tab-plugins">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m8 16 4-4 4 4"/></svg>
+                <span>Плагины</span>
+            </button>
+            <button class="tab" data-tab="tab-settings">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                <span>Настройки менеджера</span>
+            </button>
+        </nav>
+        <div class="top-actions">
+            <!-- Переключатель Тёмной / Светлой темы -->
+            <button id="theme-toggle-btn" class="btn secondary icon-only-btn" title="Переключить тему (Тёмная / Светлая)">
+                <svg id="theme-icon-sun" class="hidden" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                <svg id="theme-icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            </button>
+
+            <button id="open-save-profile-btn" class="btn secondary">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
+                <span>Сохранить профиль</span>
+            </button>
+            <button id="save-all-btn" class="btn primary">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Сохранить настройки</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- РАБОЧАЯ ОБЛАСТЬ -->
+    <main class="workspace">
+
+        <!-- Вкладка 1: Главная -->
+        <section id="tab-dashboard" class="tab-pane active">
+            <div class="dashboard-grid">
+                <div class="summary-cards">
+                    <div class="card track-card" id="dash-track-card">
+                        <div class="track-card-overlay">
+                            <div class="card-label">ВЫБРАННАЯ КАРТА</div>
+                            <div id="dash-track-name" class="card-value">Не выбрана</div>
+                            <div id="dash-ai-badge" class="badge">Проверка...</div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-label">МАШИНЫ НА СЕРВЕРЕ</div>
+                        <div id="dash-slots-count" class="card-value mono">0 Игроков</div>
+                        <div class="card-sub mono" id="dash-cars-models">Моделей: 0</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-label-row">
+                            <div class="card-label">ПОРТЫ И ВЕРСИЯ</div>
+                            <button id="dash-diag-btn" class="btn-small" data-i18n="diag.open">Диагностика</button>
+                        </div>
+                        <div id="dash-ports" class="card-value mono">UDP/TCP: 9600 &bull; HTTP: 8081</div>
+                        <div class="card-sub mono" id="dash-version-info">Версия: проверка...</div>
+                        <div id="dash-port-status" class="port-status mono"></div>
+                    </div>
+                </div>
+
+                <!-- Панель Live-мониторинга игроков и RCON-чата -->
+                <div id="live-monitor-card" class="card live-monitor-card">
+                    <div class="live-monitor-header">
+                        <button id="live-collapse-btn" class="live-title-wrap live-collapse-btn" title="Свернуть / развернуть">
+                            <svg class="live-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                            <span class="live-pulse-dot"></span>
+                            <span class="section-head" style="margin:0; color:var(--text-main);">LIVE МОНИТОРИНГ ИГРОКОВ</span>
+                            <span id="live-players-badge" class="badge neutral mono">0 онлайн</span>
+                            <span id="live-rcon-badge" class="badge neutral mono hidden" title="Команды идут через RCON">RCON</span>
+                        </button>
+                        <button id="live-history-btn" class="btn-small" data-i18n="history.open">История игроков</button>
+                        <div class="live-broadcast-box">
+                            <input type="text" id="live-broadcast-input" placeholder="Отправить сообщение всем в чат игры (Broadcast)..." class="mono">
+                            <button id="live-broadcast-btn" class="btn-small accent">Отправить</button>
+                        </div>
+                    </div>
+                    <div id="live-players-container" class="live-players-grid">
+                        <div class="live-empty-state">На сервере пока никого нет. Ожидание подключения игроков...</div>
+                    </div>
+                </div>
+
+                <div class="console-container">
+                    <div class="console-header">
+                        <div class="console-title-group">
+                            <div class="terminal-title-tag">
+                                <span class="terminal-prompt">&gt;_</span>
+                                <span>КОНСОЛЬ СЕРВЕРА</span>
+                            </div>
+                            <label class="switch-control" title="Автоматически перезапускать сервер при вылете">
+                                <input type="checkbox" id="watchdog-check">
+                                <span class="switch-track"></span>
+                                <span class="switch-text">Автоперезапуск при вылете</span>
+                            </label>
+                        </div>
+                        <div class="console-actions">
+                            <input type="text" id="log-search-input" class="log-search mono" placeholder="Поиск в логе..." data-i18n-placeholder="logs.search">
+                            <select id="log-filter-select" class="log-filter">
+                                <option value="all" data-i18n="logs.all">Все</option>
+                                <option value="error" data-i18n="logs.errors">Ошибки</option>
+                                <option value="warn" data-i18n="logs.warnings">Предупреждения</option>
+                                <option value="success" data-i18n="logs.success">Готово</option>
+                                <option value="info" data-i18n="logs.info">Инфо</option>
+                            </select>
+                            <button id="save-log-btn" class="btn-small" data-i18n="logs.save">Сохранить лог</button>
+                            <button id="clear-log-btn" class="btn-small">Очистить</button>
+                            <button id="open-server-dir-btn" class="btn-small">Папка сервера</button>
+                        </div>
+                    </div>
+
+                    <div id="console-output" class="console-output"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Вкладка 2: Машины и карта -->
+        <section id="tab-content" class="tab-pane">
+            <div class="content-layout">
+                <div class="left-catalog">
+                    <div class="panel-block">
+                        <div class="catalog-header">
+                            <div class="section-head" style="margin:0;">Выбор карты</div>
+                            <!-- Кнопка быстрого пересканирования карт, машин и новых fast_lane.ai -->
+                            <button id="rescan-content-btn" class="btn-small accent" title="Пересканировать папки трасс, машин и файлы fast_lane.ai">
+                                <svg id="rescan-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                                <span>Обновить</span>
+                            </button>
+                        </div>
+                        
+                        <label>Выбранная карта</label>
+                        <div class="track-select-btn" id="open-track-modal-btn">
+                            <div class="track-select-btn-info">
+                                <span id="display-track-name" style="font-weight:600; color:var(--text-main);">Загрузка...</span>
+                                <span id="display-track-layout" style="font-size:11px; color:var(--text-muted);">—</span>
+                            </div>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><polyline points="6 9 12 15 18 9"/></svg>
+                        </div>
+
+                        <!-- Оригинальные селекты оставляем скрытыми, чтобы не переписывать всю логику JS -->
+                        <select id="track-select" style="display: none;"></select>
+
+                        <label>Конфигурация (Layout)</label>
+                        <select id="track-config-select"></select>
+
+                        <div id="track-ai-warning" class="ai-status-box"></div>
+                        <!-- Кнопка прямого импорта файла fast_lane.ai в выбранную карту -->
+                        <button id="import-ai-line-btn" class="btn secondary full-width hidden" style="margin-top: 8px; font-size: 11px;">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            <span>Установить трафик из архива (.7z / .zip) или файла .ai</span>
+                        </button>
+                    </div>
+
+                    <div class="panel-block flex-grow">
+                        <div class="catalog-header">
+                            <div class="section-head" style="margin:0;">Доступные машины</div>
+                            <div class="filter-pills">
+                                <button class="pill active" data-filter="all">Все</button>
+                                <button class="pill" data-filter="regular">Обычные</button>
+                                <button id="pill-filter-traffic" class="pill" data-filter="traffic">Трафик</button>
+                            </div>
+                        </div>
+                        <div class="search-wrapper">
+                            <svg class="search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            <input type="text" id="car-search" placeholder="Поиск по названию или ID..." class="search-input">
+                        </div>
+                        <ul id="available-cars-list" class="cm-list"></ul>
+                    </div>
+                </div>
+
+                <div id="dual-columns-box" class="right-dual-columns">
+                    <div class="car-column player-col">
+                        <div class="column-header">
+                            <div>
+                                <div class="section-head">Машины для игроков</div>
+                                <span class="hint">Доступны для выбора игрокам</span>
+                            </div>
+                            <button id="clear-player-cars-btn" class="btn-small">Очистить</button>
+                        </div>
+                        <div id="player-cars-container" class="selected-cars-list"></div>
+                    </div>
+
+                    <div id="traffic-column-box" class="car-column traffic-col">
+                        <div class="column-header">
+                            <div>
+                                <div class="section-head traffic-title">Машины трафика (AI)</div>
+                                <span class="hint">Управляются ботами</span>
+                            </div>
+                            <div style="display:flex; gap:6px;">
+                                <button id="auto-fill-traffic-btn" class="btn-small accent">Добавить весь трафик</button>
+                                <button id="clear-traffic-cars-btn" class="btn-small">Очистить</button>
+                            </div>
+                        </div>
+                        <div id="traffic-cars-container" class="selected-cars-list"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Вкладка 3: Профили -->
+        <section id="tab-profiles" class="tab-pane">
+            <div class="profiles-sketch-layout">
+                <div class="profiles-list-box">
+                    <div class="profiles-tab-title">Сохраненные профили</div>
+                    <div id="profiles-list-container" class="profiles-items"></div>
+                    <div class="profiles-footer" style="display: flex; flex-direction: column; gap: 8px;">
+                        <button id="create-profile-btn" class="btn primary full-width">Сохранить текущую сборку</button>
+                        <button id="pack-modpack-btn" class="btn secondary full-width" style="border-color: rgba(59, 130, 246, 0.4); color: #60a5fa;">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            <span>Упаковать мод-пак для друзей (.zip)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="profile-preview-area">
+                    <div id="profile-hover-card" class="profile-hover-card">
+                        <div class="pointer-arrow"></div>
+                        <div id="preview-banner" class="preview-banner">
+                            <div class="preview-tag">ИНФОРМАЦИЯ О СБОРКЕ</div>
+                            <span id="preview-title" class="preview-title">Выберите профиль</span>
+                        </div>
+                        <div class="preview-body">
+                            <div class="preview-grid">
+                                <div class="preview-stat">
+                                    <span class="stat-label">КАРТА</span>
+                                    <span id="prev-track" class="stat-val">—</span>
+                                </div>
+                                <div class="preview-stat">
+                                    <span class="stat-label">СЛОТЫ</span>
+                                    <span id="prev-cars-count" class="stat-val mono">—</span>
+                                </div>
+                                <div class="preview-stat">
+                                    <span class="stat-label">АВТОР</span>
+                                    <span id="prev-author" class="stat-val">—</span>
+                                </div>
+                                <div class="preview-stat">
+                                    <span class="stat-label">ТРАФИК</span>
+                                    <span id="prev-ai" class="stat-val">—</span>
+                                </div>
+                            </div>
+                            <div class="preview-desc-box" id="prev-desc">Наведите курсор на профиль слева, чтобы посмотреть его настройки.</div>
+                        </div>
+                        <div class="preview-footer">
+                            <span class="stat-label">СОЗДАН</span>
+                            <span id="prev-date" class="preview-date mono">--.--.--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Вкладка 4: Настройки сервера -->
+        <section id="tab-rules" class="tab-pane">
+            <div class="settings-columns" style="margin-bottom: 20px;">
+                <div class="settings-card">
+                    <div class="section-head">Основные параметры</div>
+                    <div class="form-group">
+                        <label>Название сервера</label>
+                        <input type="text" id="cfg-server-name" placeholder="Мой сервер">
+                    </div>
+                    <div class="form-group">
+                        <label>Пароль администратора (не менее 8 символов)</label>
+                        <input type="text" id="cfg-admin-pass" class="mono">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>UDP Порт</label>
+                            <input type="number" id="cfg-udp-port" class="mono">
+                        </div>
+                        <div class="form-group">
+                            <label>TCP Порт</label>
+                            <input type="number" id="cfg-tcp-port" class="mono">
+                        </div>
+                        <div class="form-group">
+                            <label>HTTP Порт</label>
+                            <input type="number" id="cfg-http-port" class="mono">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="rcon.port">RCON порт (управление сервером из менеджера, 0 — выключен)</label>
+                        <input type="number" id="cfg-rcon-port" class="mono" min="0" max="65535">
+                        <span class="hint" data-i18n="rcon.hint">Пароль RCON — пароль администратора. Не пробрасывайте этот порт в роутере.</span>
+                    </div>
+                    <div class="switch-row">
+                        <div>
+                            <div class="switch-title" data-i18n="cfgerr.title">Игнорировать некритичные ошибки конфигурации</div>
+                            <div class="switch-sub" data-i18n="cfgerr.sub">Нет контрольных сумм машин, параметров трассы и т.п. Удобно для модов, но скрывает реальные проблемы.</div>
+                        </div>
+                        <label class="switch-control">
+                            <input type="checkbox" id="cfg-ignore-errors">
+                            <span class="switch-track"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="settings-card">
+                    <div class="section-head">Физика и помощники</div>
+                    <div class="form-group">
+                        <label>ABS (Антиблокировочная система)</label>
+                        <select id="cfg-abs">
+                            <option value="0">Запрещено (0)</option>
+                            <option value="1">Только заводской (1)</option>
+                            <option value="2">Разрешено всем (2)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>TC (Контроль тяги)</label>
+                        <select id="cfg-tc">
+                            <option value="0">Запрещено (0)</option>
+                            <option value="1">Только заводской (1)</option>
+                            <option value="2">Разрешено всем (2)</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Урон (%)</label>
+                            <input type="number" id="cfg-damage" class="mono" min="0" max="100">
+                        </div>
+                        <div class="form-group">
+                            <label>Топливо (%)</label>
+                            <input type="number" id="cfg-fuel" class="mono" min="0" max="100">
+                        </div>
+                        <div class="form-group">
+                            <label>Износ шин (%)</label>
+                            <input type="number" id="cfg-tyre-wear" class="mono" min="0" max="100">
+                        </div>
+                    </div>
+                    <div class="switch-row">
+                        <div>
+                            <div class="switch-title">Автоматическое сцепление</div>
+                            <div class="switch-sub">Разрешить Auto-Clutch игрокам</div>
+                        </div>
+                        <label class="switch-control">
+                            <input type="checkbox" id="cfg-autoclutch">
+                            <span class="switch-track"></span>
+                        </label>
+                    </div>
+                    <div class="switch-row">
+                        <div>
+                            <div class="switch-title">Прогретые шины со старта</div>
+                            <div class="switch-sub">Термочехлы для резины в боксах</div>
+                        </div>
+                        <label class="switch-control">
+                            <input type="checkbox" id="cfg-tyre-blankets">
+                            <span class="switch-track"></span>
+                        </label>
+                    </div>
+                    <div class="switch-row">
+                        <div>
+                            <div class="switch-title">Отключить наказания (Wrong Way)</div>
+                            <div class="switch-sub">Разрешить езду по встречной полосе без телепортации в боксы</div>
+                        </div>
+                        <label class="switch-control">
+                            <input type="checkbox" id="cfg-wrong-way">
+                            <span class="switch-track"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Администраторы, белый и чёрный списки -->
+            <div class="settings-card" style="margin-bottom: 20px;">
+                <div class="access-header">
+                    <div>
+                        <div class="section-head" style="margin-bottom:3px; color:var(--accent-primary);" data-i18n="access.title">АДМИНИСТРАТОРЫ И ДОСТУП</div>
+                        <span class="hint" data-i18n="access.hint">SteamID64 — 17 цифр, начинается с 7656119. Найти можно на steamid.io</span>
+                    </div>
+                    <div class="filter-pills access-tabs">
+                        <button class="pill active" data-access-list="admins" data-i18n="access.admins">Админы</button>
+                        <button class="pill" data-access-list="whitelist" data-i18n="access.whitelist">Белый список</button>
+                        <button class="pill" data-access-list="blacklist" data-i18n="access.blacklist">Чёрный список</button>
+                    </div>
+                </div>
+                <div class="access-add-row">
+                    <input type="text" id="access-steamid-input" class="mono" placeholder="76561198000000000" maxlength="17">
+                    <input type="text" id="access-name-input" placeholder="Подпись (ник)" data-i18n-placeholder="access.namePh" maxlength="64">
+                    <button id="access-add-btn" class="btn primary" data-i18n="access.add">Добавить</button>
+                </div>
+                <div id="access-list-hint" class="hint access-list-hint"></div>
+                <div id="access-list" class="access-list"></div>
+                <div class="switch-row" style="border-bottom:none; padding-bottom:0;">
+                    <div>
+                        <div class="switch-title" data-i18n="steamauth.title">Проверять игроков через Steam (UseSteamAuth)</div>
+                        <div class="switch-sub" data-i18n="steamauth.sub">Без проверки любой может выдать себя за админа, подставив чужой SteamID</div>
+                    </div>
+                    <label class="switch-control">
+                        <input type="checkbox" id="cfg-steam-auth">
+                        <span class="switch-track"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Конструктор описания с картинками и ссылками для Content Manager -->
+            <div class="settings-card">
+                <div class="cm-desc-header">
+                    <div>
+                        <div class="section-head" style="margin-bottom:3px; color:#3b82f6;">ОПИСАНИЕ СЕРВЕРА И КАРТИНКИ В CONTENT MANAGER</div>
+                        <span class="hint">Добавляйте текст, картинки и кликабельные баннеры (например, кнопку входа в ваш Discord)</span>
+                    </div>
+                    <div class="cm-toolbar">
+                        <button id="btn-add-img" class="btn-small accent">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                            <span>+ Картинка</span>
+                        </button>
+                        <button id="btn-add-clickable-banner" class="btn-small accent">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                            <span>+ Кликабельная картинка (Discord / Ссылка)</span>
+                        </button>
+                        <button id="btn-add-link" class="btn-small">+ Текстовая ссылка</button>
+                    </div>
+                </div>
+
+                <div class="cm-editor-split">
+                    <div class="cm-editor-left">
+                        <label>Текст и BBCode описания (сохраняется в ServerDescription)</label>
+                        <textarea id="cfg-server-description" rows="6" class="mono" placeholder="Добро пожаловать на сервер!&#10;[url=https://discord.gg/...][img]https://i.imgur.com/banner.png[/img][/url]"></textarea>
+                    </div>
+                    <div class="cm-editor-right">
+                        <label>Предпросмотр (как это увидят игроки в Content Manager)</label>
+                        <div id="cm-live-preview" class="cm-preview-box">
+                            <span style="color:var(--text-dim);">Описание пустое...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Вкладка: Таймлайн погоды и времени суток (CSP WeatherFX) -->
+        <section id="tab-weather" class="tab-pane">
+            <div class="settings-card weather-timeline-card">
+                <div class="weather-head">
+                    <div>
+                        <div class="section-head" style="margin-bottom:3px; color:var(--accent-primary);">ТАЙМЛАЙН ПОГОДЫ И ВРЕМЕНИ СУТОК</div>
+                        <span class="hint">Клик по шкале — новая точка, перетаскивание — смена времени. Сервер переключает погоду по мере хода игрового времени.</span>
+                    </div>
+                    <div class="weather-head-actions">
+                        <select id="wx-preset-select" class="weather-preset-select">
+                            <option value="">Шаблон...</option>
+                            <option value="clear">Ясные сутки</option>
+                            <option value="rainyEvening">Дождливый вечер</option>
+                            <option value="storm">Гроза среди дня</option>
+                            <option value="nightFog">Ночной туман</option>
+                        </select>
+                        <label class="switch-control" title="Включить таймлайн">
+                            <input type="checkbox" id="wx-enabled">
+                            <span class="switch-track"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div id="wx-timeline" class="weather-timeline">
+                    <svg id="wx-timeline-svg" preserveAspectRatio="none"></svg>
+                    <div id="wx-markers" class="weather-markers"></div>
+                </div>
+                <div class="weather-legend">
+                    <span><i class="legend-line temp"></i>Воздух, °C</span>
+                    <span><i class="legend-line road"></i>Асфальт, °C</span>
+                    <span><i class="legend-bar rain"></i>Осадки</span>
+                    <span id="wx-off-badge" class="weather-off-badge"></span>
+                    <span id="wx-live-state" class="weather-live-state"></span>
+                </div>
+            </div>
+
+            <div class="settings-columns" style="margin-top: 20px;">
+                <div class="settings-card">
+                    <div class="section-head">ВЫБРАННАЯ ТОЧКА <span id="wx-kf-title" class="mono weather-kf-title"></span></div>
+                    <div class="form-row weather-form-row">
+                        <div class="form-group">
+                            <label>Время</label>
+                            <input type="time" id="wx-kf-time" class="mono" step="300">
+                        </div>
+                        <div class="form-group" style="grid-column: span 2;">
+                            <label>Погода (CSP WeatherFX)</label>
+                            <select id="wx-kf-type"></select>
+                        </div>
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-header"><label>Температура воздуха</label><span id="val-wx-ambient">20 °C</span></div>
+                        <input type="range" id="wx-kf-ambient" min="-20" max="50" step="1">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-header"><label>Температура асфальта</label><span id="val-wx-road">26 °C</span></div>
+                        <input type="range" id="wx-kf-road" min="-20" max="70" step="1">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-header"><label>Плавность перехода</label><span id="val-wx-transition">120 с</span></div>
+                        <input type="range" id="wx-kf-transition" min="0" max="900" step="10">
+                    </div>
+                    <div class="weather-kf-actions">
+                        <button id="wx-apply-now-btn" class="btn secondary">Применить сейчас на сервере</button>
+                        <button id="wx-delete-kf-btn" class="btn danger">Удалить точку</button>
+                    </div>
+                </div>
+
+                <div class="settings-card">
+                    <div class="switch-row highlight-row" style="margin-bottom: 14px;">
+                        <div>
+                            <div class="switch-title">Динамическая погода CSP</div>
+                            <div class="switch-sub">Поддержка осадков и смены времени суток</div>
+                        </div>
+                        <label class="switch-control">
+                            <input type="checkbox" id="ai-weather-fx">
+                            <span class="switch-track"></span>
+                        </label>
+                    </div>
+                    <div class="section-head">ВЕТЕР И ХОД ВРЕМЕНИ</div>
+                    <div class="slider-group">
+                        <div class="slider-header"><label>Ветер мин.</label><span id="val-wx-wind-min">0 км/ч</span></div>
+                        <input type="range" id="wx-kf-wind-min" min="0" max="60" step="1">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-header"><label>Ветер макс.</label><span id="val-wx-wind-max">5 км/ч</span></div>
+                        <input type="range" id="wx-kf-wind-max" min="0" max="60" step="1">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-header"><label>Направление ветра</label><span id="val-wx-wind-dir">0°</span></div>
+                        <input type="range" id="wx-kf-wind-dir" min="0" max="359" step="5">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-header"><label>Скорость течения времени</label><span id="val-wx-time-mult">x1</span></div>
+                        <input type="range" id="wx-time-mult" min="0" max="60" step="1">
+                    </div>
+                    <span class="hint" data-i18n="weather.speedHint">При x1 сутки идут 24 реальных часа, при x24 — один час. Для осадков и ночи у игроков должен быть CSP и включена «Динамическая погода CSP» выше.</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Вкладка 5: Трафик -->
+        <section id="tab-ai" class="tab-pane">
+            <div class="settings-columns">
+                <div class="settings-card">
+                    <div class="section-head">Параметры трафика</div>
+                    
+                    <div class="switch-row highlight-row">
+                        <div>
+                            <div class="switch-title">Включить ИИ-трафик</div>
+                            <div class="switch-sub">Спавнить ботов на дороге вокруг игроков</div>
+                        </div>
+                        <label class="switch-control">
+                            <input type="checkbox" id="ai-enable">
+                            <span class="switch-track"></span>
+                        </label>
+                    </div>
+
+                    <div class="switch-row">
+                        <div>
+                            <div class="switch-title">Встречное движение</div>
+                            <div class="switch-sub">Разрешить ботам ехать по встречной полосе</div>
+                        </div>
+                        <label class="switch-control">
+                            <input type="checkbox" id="ai-two-way">
+                            <span class="switch-track"></span>
+                        </label>
+                    </div>
+
+                    <div class="switch-row">
+                        <div>
+                            <div class="switch-title">Скрывать ники ботов</div>
+                            <div class="switch-sub">Прятать имена и точки трафика на мини-карте</div>
+                        </div>
+                        <label class="switch-control">
+                            <input type="checkbox" id="ai-hide-nametags">
+                            <span class="switch-track"></span>
+                        </label>
+                    </div>
+
+                    <div class="switch-row">
+                        <div>
+                            <div class="switch-title">Принудительно включить фары</div>
+                            <div class="switch-sub">Включать фары всем участникам движения</div>
+                        </div>
+                        <label class="switch-control">
+                            <input type="checkbox" id="ai-force-lights">
+                            <span class="switch-track"></span>
+                        </label>
+                    </div>
+
+                    <div class="switch-row">
+                        <div>
+                            <div class="switch-title">Авто-кик за AFK</div>
+                            <div class="switch-sub">Кикать игроков при длительном бездействии</div>
+                        </div>
+                        <label class="switch-control">
+                            <input type="checkbox" id="ai-anti-afk">
+                            <span class="switch-track"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="settings-card">
+                    <div class="section-head">Поведение и плотность</div>
+                    
+                    <div class="slider-group">
+                        <div class="slider-header">
+                            <label>Ботов вокруг одного игрока</label>
+                            <span id="val-ai-per-player" class="mono">30</span>
+                        </div>
+                        <input type="range" id="ai-per-player" min="5" max="100" step="1">
+                    </div>
+
+                    <div class="slider-group">
+                        <div class="slider-header">
+                            <label>Общий лимит ботов на сервере</label>
+                            <span id="val-ai-max-target" class="mono">250</span>
+                        </div>
+                        <input type="range" id="ai-max-target" min="20" max="500" step="10">
+                    </div>
+
+                    <div class="slider-group">
+                        <div class="slider-header">
+                            <label>Максимальная скорость потока</label>
+                            <span id="val-ai-max-speed" class="mono">80 км/ч</span>
+                        </div>
+                        <input type="range" id="ai-max-speed" min="30" max="200" step="5">
+                    </div>
+
+                    <div class="slider-group">
+                        <div class="slider-header">
+                            <label>Прибавка скорости в правой полосе</label>
+                            <span id="val-ai-lane-offset" class="mono">15 км/ч</span>
+                        </div>
+                        <input type="range" id="ai-lane-offset" min="0" max="60" step="5">
+                    </div>
+
+                    <div class="slider-group">
+                        <div class="slider-header">
+                            <label>Дистанция между ботами</label>
+                            <span id="val-ai-safety-dist" class="mono">10 м</span>
+                        </div>
+                        <input type="range" id="ai-safety-dist" min="3" max="50" step="1">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Вкладка: Репозиторий плагинов -->
+        <section id="tab-plugins" class="tab-pane">
+            <div class="settings-card" style="height: 100%; display: flex; flex-direction: column;">
+                <div class="catalog-header" style="margin-bottom: 16px;">
+                    <div>
+                        <div class="section-head" style="margin-bottom: 3px; color: var(--accent-primary);">РЕПОЗИТОРИЙ ПЛАГИНОВ ASSETTOSERVER</div>
+                        <span class="hint">Устанавливайте официальные и пользовательские расширения в один клик</span>
+                    </div>
+                    <button id="refresh-plugins-btn" class="btn-small accent">Обновить список</button>
+                </div>
+                <div id="plugins-grid" class="track-cards-grid" style="flex: 1; overflow-y: auto;">
+                    <!-- Сюда JS будет динамически рендерить карточки плагинов -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Вкладка 6: Настройки менеджера -->
+        <section id="tab-settings" class="tab-pane">
+            <div class="settings-columns">
+                <div class="settings-card">
+                    <div class="section-head">РАСПОЛОЖЕНИЕ ПАПОК</div>
+                    <div class="form-group">
+                        <label>Папка с игрой Assetto Corsa</label>
+                        <div class="path-selector">
+                            <input type="text" id="sys-ac-path" class="mono" readonly>
+                            <button id="sys-autodetect-btn" class="btn secondary">Найти автоматически</button>
+                            <button id="sys-change-ac-btn" class="btn secondary">Обзор...</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Папка сервера (server_instance)</label>
+                        <div class="path-selector">
+                            <input type="text" id="sys-server-dir" class="mono" readonly>
+                            <button id="sys-open-server-btn" class="btn secondary">Открыть папку</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-card">
+                    <div class="section-head">ОБНОВЛЕНИЕ ASSETTO SERVER</div>
+                    <p style="font-size:12px; color:var(--text-muted); margin-bottom:18px; line-height:1.6;">
+                        Программа автоматически скачивает свежую оригинальную версию <b>AssettoServer</b> с официального GitHub. Ваши настройки и профили при этом остаются на месте.
+                    </p>
+                    <div class="version-box">
+                        <span class="stat-label">УСТАНОВЛЕННАЯ ВЕРСИЯ</span>
+                        <span id="sys-as-version" class="mono version-val">Неизвестно</span>
+                    </div>
+                    <button id="sys-update-as-btn" class="btn primary full-width">Скачать / Обновить AssettoServer</button>
+                </div>
+            </div>
+
+            <div class="settings-columns" style="margin-top: 20px;">
+                <div class="settings-card">
+                    <div class="section-head">ЯЗЫК ИНТЕРФЕЙСА / UI LANGUAGE</div>
+                    <div class="form-group">
+                        <label>Выберите язык программы</label>
+                        <select id="app-language-select">
+                            <option value="ru">Русский (Russian)</option>
+                            <option value="en">English (Английский)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="settings-card">
+                    <div class="section-head">DISCORD WEBHOOKS (УВЕДОМЛЕНИЯ)</div>
+                    <div class="switch-row" style="padding-top: 0;">
+                        <div>
+                            <div class="switch-title">Отправлять уведомления в Discord</div>
+                            <div class="switch-sub">Старт/стоп сервера, вылеты и вход игроков</div>
+                        </div>
+                        <label class="switch-control">
+                            <input type="checkbox" id="webhook-enable-check">
+                            <span class="switch-track"></span>
+                        </label>
+                    </div>
+                    <div class="form-group" style="margin-top: 10px; margin-bottom: 0;">
+                        <label>URL Вебхука (Discord Channel Webhook URL)</label>
+                        <div class="path-selector" style="margin-bottom: 0;">
+                            <input type="text" id="webhook-url-input" class="mono" placeholder="https://discord.com/api/webhooks/...">
+                            <button id="webhook-save-btn" class="btn secondary">Сохранить</button>
+                            <button id="webhook-test-btn" class="btn primary">Тест</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-columns" style="margin-top: 20px;">
+                <div class="settings-card">
+                    <div class="backup-header">
+                        <div class="section-head" style="margin:0;" data-i18n="backup.title">РЕЗЕРВНЫЕ КОПИИ НАСТРОЕК</div>
+                        <div class="backup-actions">
+                            <button id="backup-open-folder-btn" class="btn-small" data-i18n="backup.folder">Папка</button>
+                            <button id="backup-create-btn" class="btn-small accent" data-i18n="backup.create">+ Создать копию</button>
+                        </div>
+                    </div>
+                    <span class="hint" data-i18n="backup.hint">cfg, профили, списки доступа и история игроков. Автокопия делается перед каждым сохранением (хранятся последние 10).</span>
+                    <div id="backup-list" class="backup-list"></div>
+                </div>
+
+                <div class="settings-card">
+                    <div class="section-head" data-i18n="schedule.title">РАСПИСАНИЕ: РЕСТАРТЫ И СООБЩЕНИЯ</div>
+                    <div class="switch-row">
+                        <div>
+                            <div class="switch-title" data-i18n="schedule.restart">Плановый рестарт сервера</div>
+                            <div class="switch-sub" data-i18n="schedule.restartSub">Игроки получат предупреждения в чат за 10, 5 и 1 минуту</div>
+                        </div>
+                        <label class="switch-control">
+                            <input type="checkbox" id="sched-restart-enabled">
+                            <span class="switch-track"></span>
+                        </label>
+                    </div>
+                    <div class="slider-group" style="margin-top: 10px;">
+                        <div class="slider-header"><label data-i18n="schedule.every">Рестарт каждые</label><span id="val-sched-hours">6 ч</span></div>
+                        <input type="range" id="sched-restart-hours" min="1" max="24" step="1">
+                    </div>
+                    <div class="switch-row">
+                        <div>
+                            <div class="switch-title" data-i18n="schedule.messages">Сообщения в чат по расписанию</div>
+                            <div class="switch-sub" data-i18n="schedule.messagesSub">По одному сообщению на строку, показываются по очереди</div>
+                        </div>
+                        <label class="switch-control">
+                            <input type="checkbox" id="sched-messages-enabled">
+                            <span class="switch-track"></span>
+                        </label>
+                    </div>
+                    <div class="slider-group" style="margin-top: 10px;">
+                        <div class="slider-header"><label data-i18n="schedule.interval">Интервал</label><span id="val-sched-interval">15 мин</span></div>
+                        <input type="range" id="sched-message-interval" min="1" max="120" step="1">
+                    </div>
+                    <textarea id="sched-messages" rows="4" class="mono" placeholder="Наш Discord: discord.gg/..."></textarea>
+                    <button id="sched-save-btn" class="btn primary full-width" style="margin-top: 12px;" data-i18n="schedule.save">Сохранить расписание</button>
+                </div>
+            </div>
+
+            <!-- БЛОК: История изменений -->
+            <div class="settings-card" style="margin-top: 20px;">
+                <div class="section-head">ЧТО НОВОГО (ИСТОРИЯ ИЗМЕНЕНИЙ)</div>
+                <div id="changelog-content" class="changelog-content mono">
+                    <!-- Заполняется из renderer.js -->
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Нижняя панель управления с центральной подписью BY QUAAAZI -->
+    <footer class="action-bar">
+        <div class="status-indicator">
+            <span id="status-dot" class="dot offline"></span>
+            <span id="status-text" class="mono">СЕРВЕР ОСТАНОВЛЕН</span>
+        </div>
+
+        <div class="author-watermark">
+            <span class="watermark-prefix">CREATED</span>
+            <span class="watermark-name">BY QUAAAZI</span>
+        </div>
+
+        <div class="control-buttons">
+            <button id="stop-server-btn" class="btn danger" disabled>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+                <span>Остановить</span>
+            </button>
+            <button id="start-server-btn" class="btn go-btn">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                <span>Запустить сервер</span>
+            </button>
+        </div>
+    </footer>
+
+    <script src="src/i18n.js"></script>
+    <script src="renderer.js"></script>
+</body>
+</html>

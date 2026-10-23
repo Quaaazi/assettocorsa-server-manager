@@ -1,0 +1,22 @@
+{
+  "plugins": [
+    {
+      "id": "discord-chat-bridge",
+      "name": "Discord Chat Bridge",
+      "author": "AssettoServer Team",
+      "description": "Двусторонняя связь игрового чата с текстовым каналом в Discord.",
+      "version": "1.2.0",
+      "downloadUrl": "https://github.com/compujuckel/AssettoServer/releases/latest/download/DiscordPlugin.zip",
+      "configFileName": "DiscordPlugin.yml"
+    },
+    {
+      "id": "server-stats",
+      "name": "Advanced Stats & Records",
+      "author": "Community",
+      "description": "Сбор подробной статистики заездов, рекордов кругов и топ-листов.",
+      "version": "1.0.4",
+      "downloadUrl": "https://github.com/compujuckel/AssettoServer/releases/latest/download/StatsPlugin.zip",
+      "configFileName": "StatsPlugin.yml"
+    }
+  ]
+}
